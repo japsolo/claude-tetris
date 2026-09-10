@@ -11,6 +11,7 @@ const COLORS = [
   "#e57373", // Z - red
   "#64b5f6", // J - pale blue
   "#ffb74d", // L - orange
+  "#f06292", // O3 - marco 3x3 (especial)
 ];
 
 const PIECES = [
@@ -50,9 +51,22 @@ const PIECES = [
     [7, 7, 7],
     [0, 0, 0],
   ], // L
+  [
+    [8, 8, 8],
+    [8, 0, 8],
+    [8, 8, 8],
+  ], // O3 - marco 3x3 hueco
 ];
 
 const LINE_SCORES = [0, 100, 300, 500, 800];
+
+const STANDARD_PIECE_TYPES = 7;
+
+// Piezas especiales: `chance` es la probabilidad (0–1) de que salga en cada
+// generación. Se evalúan en orden; el resto de las veces sale una estándar.
+const SPECIAL_PIECES = [
+  { type: 8, chance: 0.03 }, // marco 3x3
+];
 
 const canvas = document.getElementById("board");
 const ctx = canvas.getContext("2d");
@@ -84,8 +98,15 @@ function createBoard() {
   return Array.from({ length: ROWS }, () => new Array(COLS).fill(0));
 }
 
+function pickPieceType() {
+  for (const special of SPECIAL_PIECES) {
+    if (Math.random() < special.chance) return special.type;
+  }
+  return Math.floor(Math.random() * STANDARD_PIECE_TYPES) + 1;
+}
+
 function randomPiece() {
-  const type = Math.floor(Math.random() * 7) + 1;
+  const type = pickPieceType();
   const shape = PIECES[type].map((row) => [...row]);
   return { type, shape, x: Math.floor(COLS / 2) - Math.floor(shape[0].length / 2), y: 0 };
 }
