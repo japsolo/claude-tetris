@@ -1,0 +1,89 @@
+name: Claude Issue Triage
+
+on:
+  issues:
+    types: [opened, edited, reopened]
+
+concurrency:
+  group: issue-triage-${{ github.event.issue.number }}
+  cancel-in-progress: true
+
+jobs:
+  triage:
+    # Run on open/reopen always; on edited, only when title or body actually changed.
+    # Skip when the issue already mentions @claude (claude.yml handles that flow),
+    # to avoid two workflows commenting on the same issue.
+    if: |
+      !contains(github.event.issue.body, '@claude') &&
+      !contains(github.event.issue.title, '@claude') &&
+      (
+        github.event.action != 'edited' ||
+        github.event.changes.body != null ||
+        github.event.changes.title != null
+      )
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Run Claude Issue Triage
+        id: claude-triage
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+
+          prompt: |
+            You are triaging GitHub issue #${{ github.event.issue.number }} in this repository.
+
+            Issue title:
+            ${{ github.event.issue.title }}
+
+            Issue body:
+            ${{ github.event.issue.body }}
+
+            Do this, in order:
+
+            1. Read CLAUDE.md at the repo root to understand the architecture
+               (board model, PIECES, collide, tryRotate, lockPiece, clearLines,
+               ghostY, tunable constants, controls). Then read the relevant source
+               files (game.js, index.html, style.css) to locate the code related to
+               this issue before concluding anything.
+
+            2. Choose labels for this issue ONLY from this exact existing set —
+               never invent or create new labels:
+               bug, enhancement, documentation, question, duplicate, invalid,
+               wontfix, help wanted, good first issue
+               Apply the ones that fit with `gh issue edit ${{ github.event.issue.number }} --add-label "<label>"`.
+               If this is a re-triage after an edit and a previously-applied label
+               from this set no longer fits, remove it with
+               `gh issue edit ${{ github.event.issue.number }} --remove-label "<label>"`.
+
+            3. Post a diagnostic comment with
+               `gh issue comment ${{ github.event.issue.number }} --body "..."`
+               starting with the exact heading `## 🔎 Diagnóstico automático` and containing:
+               - **Resumen**: one short paragraph restating the problem in your own words.
+               - **Archivos y funciones relacionadas**: bullet list with `file:line`
+                 references (e.g. `game.js:120`) to the suspected functions/areas.
+               - **Causa probable**: your best technical explanation of the root cause,
+                 or why it's not reproducible/valid if that's the case.
+               - **Enfoque de solución propuesto**: a short, concrete plan for how the
+                 fix or feature could be implemented, referencing existing functions/
+                 patterns to reuse instead of proposing new ones when possible.
+               - **Información faltante**: only if the issue is ambiguous or missing
+                 repro steps, list what's needed from the author.
+               If this is a re-triage (the issue was edited after an earlier automatic
+               diagnostic comment already exists), explicitly note at the top that this
+               is an updated diagnosis reflecting the edited issue.
+
+            4. Do NOT write or modify any code, and do NOT open pull requests. This is
+               triage and diagnosis only — implementation happens later in a separate step.
+
+          claude_args: |
+            --allowedTools "Bash(gh issue view:*),Bash(gh issue comment:*),Bash(gh issue edit:*),Bash(gh label list:*),Bash(gh issue list:*),Read,Grep,Glob"
