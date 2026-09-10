@@ -12,6 +12,7 @@ const COLORS = [
   "#64b5f6", // J - pale blue
   "#ffb74d", // L - orange
   "#f06292", // O3 - marco 3x3 (especial)
+  "#78909c", // Pentominós (especial)
 ];
 
 const PIECES = [
@@ -56,16 +57,52 @@ const PIECES = [
     [8, 0, 8],
     [8, 8, 8],
   ], // O3 - marco 3x3 hueco
+  [
+    [9, 9, 0],
+    [9, 9, 0],
+    [9, 0, 0],
+  ], // P5
+  [
+    [9, 0, 9],
+    [9, 9, 9],
+    [0, 0, 0],
+  ], // U5
+  [
+    [9, 9, 9],
+    [0, 9, 0],
+    [0, 9, 0],
+  ], // T5
+  [
+    [0, 9, 0, 0],
+    [0, 9, 0, 0],
+    [0, 9, 0, 0],
+    [0, 9, 9, 0],
+  ], // L5
+  [
+    [0, 9, 0, 0],
+    [0, 9, 0, 0],
+    [0, 9, 9, 0],
+    [0, 0, 9, 0],
+  ], // N5
+  [
+    [0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0],
+    [9, 9, 9, 9, 9],
+    [0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0],
+  ], // I5
 ];
 
-const LINE_SCORES = [0, 100, 300, 500, 800];
+const LINE_SCORES = [0, 100, 300, 500, 800, 1200];
 
 const STANDARD_PIECE_TYPES = 7;
+const PENTOMINO_TYPES = [9, 10, 11, 12, 13, 14];
 
-// Piezas especiales: `chance` es la probabilidad (0–1) de que salga en cada
-// generación. Se evalúan en orden; el resto de las veces sale una estándar.
+// Piezas especiales: `chance` es la probabilidad (0–1) de que salga el grupo en
+// cada generación. Se evalúan en orden; el resto de las veces sale una estándar.
 const SPECIAL_PIECES = [
-  { type: 8, chance: 0.03 }, // marco 3x3
+  { chance: 0.12, types: PENTOMINO_TYPES }, // pentominós (5 celdas)
+  { chance: 0.03, types: [8] }, // marco 3x3 hueco
 ];
 
 const canvas = document.getElementById("board");
@@ -100,7 +137,9 @@ function createBoard() {
 
 function pickPieceType() {
   for (const special of SPECIAL_PIECES) {
-    if (Math.random() < special.chance) return special.type;
+    if (Math.random() < special.chance) {
+      return special.types[Math.floor(Math.random() * special.types.length)];
+    }
   }
   return Math.floor(Math.random() * STANDARD_PIECE_TYPES) + 1;
 }
@@ -256,11 +295,12 @@ function draw() {
 }
 
 function drawNext() {
-  const NB = 30;
   nextCtx.clearRect(0, 0, nextCanvas.width, nextCanvas.height);
   const shape = next.shape;
-  const offX = Math.floor((4 - shape[0].length) / 2);
-  const offY = Math.floor((4 - shape.length) / 2);
+  const gridSize = Math.max(4, shape.length, shape[0].length);
+  const NB = nextCanvas.width / gridSize;
+  const offX = Math.floor((gridSize - shape[0].length) / 2);
+  const offY = Math.floor((gridSize - shape.length) / 2);
   for (let r = 0; r < shape.length; r++) for (let c = 0; c < shape[r].length; c++) drawBlock(nextCtx, offX + c, offY + r, shape[r][c], NB);
 }
 
