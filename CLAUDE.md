@@ -27,8 +27,9 @@ Everything lives in `game.js` (~300 lines), driven by a single `requestAnimation
 - **Game loop** (`loop`): accumulates elapsed time each frame; when it exceeds `dropInterval`, the piece drops one row or locks via `lockPiece`.
 - **Locking** (`lockPiece` → `merge` → `clearLines` → `spawn`): merges the piece into `board`, clears completed rows (scanned bottom-up, with the row index bumped back after a splice so the shifted row is re-checked), then spawns the next piece.
 - **Scoring**: `LINE_SCORES = [0, 100, 300, 500, 800]` multiplied by `level`; hard drop adds 2 points/cell dropped, soft drop adds 1 point/row.
-- **Level/speed**: level increases every 10 lines; `dropInterval = max(100, 1000 - (level - 1) * 90)` ms.
+- **Level/speed**: `level = baseLevel + floor(lines / 10)`; `dropInterval = max(100, 1000 - (level - 1) * 90)` ms.
 - **Ghost piece**: `ghostY()` projects the current piece straight down to its landing row; drawn at `globalAlpha = 0.2`.
+- **Pause menu**: `P`/`Escape` toggle `togglePause()`, which shows the separate `#pause-menu` overlay (Reanudar, Reiniciar, Ver controles, Nivel inicial 1–10). `startLevel` (set by Reiniciar from the select) is copied by `init()` into `baseLevel` for the initial `level`/`dropInterval`. While paused the keydown handler ignores everything except P/Escape; the menu is a modal dialog (`role="dialog"`): opening it saves the focused element and focuses `#resume-btn`, Tab/Shift+Tab are trapped inside, and focus is restored on close. Resume resets `lastTime` and `dropAccum`.
 - **Game over**: triggered in `spawn()` if the newly spawned piece immediately collides.
 
 All state (`board`, `current`, `next`, `score`, `lines`, `level`, `paused`, `gameOver`, timing vars) is module-level, reset by `init()`.

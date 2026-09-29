@@ -116,11 +116,19 @@ const overlay = document.getElementById("overlay");
 const overlayTitle = document.getElementById("overlay-title");
 const overlayScore = document.getElementById("overlay-score");
 const restartBtn = document.getElementById("restart-btn");
+const pauseMenu = document.getElementById("pause-menu");
+const resumeBtn = document.getElementById("resume-btn");
+const pauseRestartBtn = document.getElementById("pause-restart-btn");
+const controlsBtn = document.getElementById("controls-btn");
+const controlsList = document.getElementById("pause-controls");
+const startLevelSelect = document.getElementById("start-level");
 const themeToggleBtn = document.getElementById("theme-toggle");
 
 const THEME_STORAGE_KEY = "tetris-theme";
 
 let board, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId;
+let startLevel = 1; // nivel elegido en el menú para la próxima partida
+let baseLevel = 1; // nivel inicial de la partida en curso
 let gridLineColor = "#22222e";
 
 function applyTheme(theme) {
@@ -200,7 +208,7 @@ function clearLines() {
   if (cleared) {
     lines += cleared;
     score += (LINE_SCORES[cleared] || 0) * level;
-    level = Math.floor(lines / 10) + 1;
+    level = baseLevel + Math.floor(lines / 10);
     dropInterval = Math.max(100, 1000 - (level - 1) * 90);
     updateHUD();
   }
@@ -313,17 +321,47 @@ function endGame() {
   overlay.classList.remove("hidden");
 }
 
+let pauseReturnFocus = null;
+
+function restorePauseFocus() {
+  const returnFocus = pauseReturnFocus;
+  pauseReturnFocus = null;
+  if (returnFocus instanceof HTMLElement) returnFocus.focus();
+}
+
 function togglePause() {
   if (gameOver) return;
   paused = !paused;
   if (!paused) {
     lastTime = performance.now();
-    loop(lastTime);
+    dropAccum = 0;
+    pauseMenu.classList.add("hidden");
+    restorePauseFocus();
+    cancelAnimationFrame(animId);
+    animId = requestAnimationFrame(loop);
   } else {
     cancelAnimationFrame(animId);
-    overlayTitle.textContent = "PAUSA";
-    overlayScore.textContent = "";
-    overlay.classList.remove("hidden");
+    animId = null;
+    pauseReturnFocus = document.activeElement;
+    controlsList.classList.add("hidden");
+    startLevelSelect.value = startLevel;
+    pauseMenu.classList.remove("hidden");
+    resumeBtn.focus();
+  }
+}
+
+function trapPauseFocus(e) {
+  const focusable = [...pauseMenu.querySelectorAll("button:not([disabled]), select:not([disabled])")].filter(
+    (el) => el.offsetParent !== null
+  );
+  const first = focusable[0];
+  const last = focusable[focusable.length - 1];
+  const outside = !pauseMenu.contains(document.activeElement);
+  const wrapBack = e.shiftKey && document.activeElement === first;
+  const wrapForward = !e.shiftKey && document.activeElement === last;
+  if (outside || wrapBack || wrapForward) {
+    e.preventDefault();
+    (e.shiftKey ? last : first).focus();
   }
 }
 
@@ -349,23 +387,30 @@ function init() {
   board = createBoard();
   score = 0;
   lines = 0;
-  level = 1;
+  baseLevel = startLevel;
+  level = baseLevel;
   paused = false;
   gameOver = false;
-  dropInterval = 1000;
+  dropInterval = Math.max(100, 1000 - (level - 1) * 90);
   dropAccum = 0;
   lastTime = performance.now();
   next = randomPiece();
   spawn();
   updateHUD();
   overlay.classList.add("hidden");
+  pauseMenu.classList.add("hidden");
+  restorePauseFocus();
   cancelAnimationFrame(animId);
   animId = requestAnimationFrame(loop);
 }
 
 document.addEventListener("keydown", (e) => {
-  if (e.code === "KeyP") {
+  if (e.code === "KeyP" || e.code === "Escape") {
     togglePause();
+    return;
+  }
+  if (paused && e.code === "Tab") {
+    trapPauseFocus(e);
     return;
   }
   if (paused || gameOver) return;
@@ -392,6 +437,18 @@ document.addEventListener("keydown", (e) => {
 });
 
 restartBtn.addEventListener("click", init);
+
+// Menú de pausa: el foco se gestiona dentro del diálogo (ver togglePause / trapPauseFocus).
+resumeBtn.addEventListener("click", () => {
+  if (paused) togglePause();
+});
+pauseRestartBtn.addEventListener("click", () => {
+  startLevel = Number(startLevelSelect.value);
+  init();
+});
+controlsBtn.addEventListener("click", () => {
+  controlsList.classList.toggle("hidden");
+});
 
 themeToggleBtn.addEventListener("click", () => {
   applyTheme(document.body.classList.contains("light-theme") ? "dark" : "light");
