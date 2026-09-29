@@ -116,19 +116,43 @@ const overlay = document.getElementById("overlay");
 const overlayTitle = document.getElementById("overlay-title");
 const overlayScore = document.getElementById("overlay-score");
 const restartBtn = document.getElementById("restart-btn");
+const pauseMenu = document.getElementById("pause-menu");
+const resumeBtn = document.getElementById("resume-btn");
+const pauseRestartBtn = document.getElementById("pause-restart-btn");
+const controlsBtn = document.getElementById("controls-btn");
+const controlsList = document.getElementById("pause-controls");
+const startLevelSelect = document.getElementById("start-level");
 const themeToggleBtn = document.getElementById("theme-toggle");
 const skinSelect = document.getElementById("skin-select");
 
+const startScreen = document.getElementById("start-screen");
+const startScoresEl = document.getElementById("start-scores");
+const playBtn = document.getElementById("play-btn");
+const hsForm = document.getElementById("hs-form");
+const hsName = document.getElementById("hs-name");
+const hsSave = document.getElementById("hs-save");
+const hsBadge = document.getElementById("hs-badge");
+const overScoresEl = document.getElementById("over-scores");
+const clearBtns = document.querySelectorAll(".clear-scores-btn");
+
+const HS_KEY = "tetris-highscores";
+const HS_STATS_KEY = "tetris-highscores-stats";
+const HS_MAX = 5;
 const THEME_STORAGE_KEY = "tetris-theme";
 
+let combo, maxCombo, started = false;
 let board, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId;
+let startLevel = 1; // nivel elegido en el menú para la próxima partida
+let baseLevel = 1; // nivel inicial de la partida en curso
 let gridLineColor = "#22222e";
 
 function applyTheme(theme) {
   const isLight = theme === "light";
   document.body.classList.toggle("light-theme", isLight);
   themeToggleBtn.textContent = isLight ? "☀️" : "🌙";
-  localStorage.setItem(THEME_STORAGE_KEY, theme);
+  try {
+    localStorage.setItem(THEME_STORAGE_KEY, theme);
+  } catch (e) {}
   gridLineColor = getComputedStyle(document.body).getPropertyValue("--grid-line").trim();
   if (board && current) draw();
 }
@@ -253,6 +277,112 @@ function loadSkin() {
   }
 }
 
+// ---- Récords locales ----
+let hsEntry = null; // entrada recién guardada (para resaltarla)
+let highscores = loadJSON(HS_KEY, [])
+  .filter((h) => h && typeof h.score === "number")
+  .map((h) => ({ name: String(h.name || "Anónimo").slice(0, 12), score: h.score, lines: Number(h.lines) || 0, maxCombo: Number(h.maxCombo) || 0, date: h.date }))
+  .slice(0, HS_MAX);
+const rawStats = loadJSON(HS_STATS_KEY, {});
+let stats = { bestCombo: Number(rawStats.bestCombo) || 0, maxLines: Number(rawStats.maxLines) || 0 };
+
+function loadJSON(key, fallback) {
+  try {
+    const v = JSON.parse(localStorage.getItem(key));
+    if (v && typeof v === "object") return Array.isArray(fallback) === Array.isArray(v) ? v : fallback;
+  } catch (e) {}
+  return fallback;
+}
+
+function saveJSON(key, value) {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch (e) {}
+}
+
+function registerCombo(cleared) {
+  combo = cleared ? combo + 1 : 0;
+  if (combo > maxCombo) maxCombo = combo;
+}
+
+function qualifies() {
+  return score > 0 && (highscores.length < HS_MAX || score > highscores[highscores.length - 1].score);
+}
+
+function renderScores(container, st, highlight) {
+  container.textContent = "";
+  const table = document.createElement("table");
+  table.className = "hs-table";
+  const head = table.createTHead().insertRow();
+  ["#", "Nombre", "Puntos", "Líneas", "Combo"].forEach((t) => (head.insertCell().textContent = t));
+  const body = table.createTBody();
+  if (!highscores.length) {
+    const cell = body.insertRow().insertCell();
+    cell.colSpan = 5;
+    cell.className = "hs-empty";
+    cell.textContent = "Sin récords todavía";
+  }
+  highscores.forEach((h, i) => {
+    const row = body.insertRow();
+    if (h === highlight) row.className = "hs-current";
+    [i + 1, h.name, h.score.toLocaleString(), h.lines, h.maxCombo].forEach((t) => (row.insertCell().textContent = t));
+  });
+  const info = document.createElement("p");
+  info.className = "hs-stats";
+  info.textContent = `Mejor combo: ${st.bestCombo} · Máx. líneas: ${st.maxLines}`;
+  container.append(table, info);
+}
+
+function showGameOverScores() {
+  stats.bestCombo = Math.max(stats.bestCombo, maxCombo);
+  stats.maxLines = Math.max(stats.maxLines, lines);
+  saveJSON(HS_STATS_KEY, stats);
+  const q = qualifies();
+  hsBadge.classList.toggle("hidden", !q);
+  hsForm.classList.toggle("hidden", !q);
+  hsName.value = "";
+  renderScores(overScoresEl, stats, null);
+  if (q) hsName.focus();
+}
+
+function saveHighscore() {
+  if (hsEntry || !qualifies()) return;
+  hsEntry = { name: hsName.value.trim().slice(0, 12) || "Anónimo", score, lines, maxCombo, date: new Date().toISOString() };
+  highscores.push(hsEntry);
+  highscores.sort((a, b) => b.score - a.score);
+  highscores.length = Math.min(highscores.length, HS_MAX);
+  saveJSON(HS_KEY, highscores);
+  hsForm.classList.add("hidden");
+  renderScores(overScoresEl, stats, hsEntry);
+}
+
+function clearHighscores() {
+  highscores = [];
+  stats = { bestCombo: 0, maxLines: 0 };
+  hsEntry = null;
+  try {
+    localStorage.removeItem(HS_KEY);
+    localStorage.removeItem(HS_STATS_KEY);
+  } catch (e) {}
+  hsBadge.classList.add("hidden");
+  hsForm.classList.add("hidden");
+  renderScores(startScoresEl, stats, null);
+  renderScores(overScoresEl, stats, null);
+}
+
+function startGame() {
+  started = true;
+  startScreen.classList.add("hidden");
+  init();
+}
+
+playBtn.addEventListener("click", startGame);
+hsSave.addEventListener("click", saveHighscore);
+hsName.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") saveHighscore();
+});
+clearBtns.forEach((b) => b.addEventListener("click", clearHighscores));
+
 function createBoard() {
   return Array.from({ length: ROWS }, () => new Array(COLS).fill(0));
 }
@@ -322,10 +452,11 @@ function clearLines() {
   if (cleared) {
     lines += cleared;
     score += (LINE_SCORES[cleared] || 0) * level;
-    level = Math.floor(lines / 10) + 1;
+    level = baseLevel + Math.floor(lines / 10);
     dropInterval = Math.max(100, 1000 - (level - 1) * 90);
     updateHUD();
   }
+  registerCombo(cleared);
 }
 
 function ghostY() {
@@ -434,6 +565,15 @@ function endGame() {
   overlayTitle.textContent = "GAME OVER";
   overlayScore.textContent = `Puntuación: ${score.toLocaleString()}`;
   overlay.classList.remove("hidden");
+  showGameOverScores();
+}
+
+let pauseReturnFocus = null;
+
+function restorePauseFocus() {
+  const returnFocus = pauseReturnFocus;
+  pauseReturnFocus = null;
+  if (returnFocus instanceof HTMLElement) returnFocus.focus();
 }
 
 function togglePause() {
@@ -441,12 +581,34 @@ function togglePause() {
   paused = !paused;
   if (!paused) {
     lastTime = performance.now();
-    loop(lastTime);
+    dropAccum = 0;
+    pauseMenu.classList.add("hidden");
+    restorePauseFocus();
+    cancelAnimationFrame(animId);
+    animId = requestAnimationFrame(loop);
   } else {
     cancelAnimationFrame(animId);
-    overlayTitle.textContent = "PAUSA";
-    overlayScore.textContent = "";
-    overlay.classList.remove("hidden");
+    animId = null;
+    pauseReturnFocus = document.activeElement;
+    controlsList.classList.add("hidden");
+    startLevelSelect.value = startLevel;
+    pauseMenu.classList.remove("hidden");
+    resumeBtn.focus();
+  }
+}
+
+function trapPauseFocus(e) {
+  const focusable = [...pauseMenu.querySelectorAll("button:not([disabled]), select:not([disabled])")].filter(
+    (el) => el.offsetParent !== null
+  );
+  const first = focusable[0];
+  const last = focusable[focusable.length - 1];
+  const outside = !pauseMenu.contains(document.activeElement);
+  const wrapBack = e.shiftKey && document.activeElement === first;
+  const wrapForward = !e.shiftKey && document.activeElement === last;
+  if (outside || wrapBack || wrapForward) {
+    e.preventDefault();
+    (e.shiftKey ? last : first).focus();
   }
 }
 
@@ -471,26 +633,38 @@ function loop(ts) {
 function init() {
   board = createBoard();
   score = 0;
+  combo = 0;
+  maxCombo = 0;
+  hsEntry = null;
   lines = 0;
-  level = 1;
+  baseLevel = startLevel;
+  level = baseLevel;
   paused = false;
   gameOver = false;
-  dropInterval = 1000;
+  dropInterval = Math.max(100, 1000 - (level - 1) * 90);
   dropAccum = 0;
   lastTime = performance.now();
   next = randomPiece();
   spawn();
   updateHUD();
   overlay.classList.add("hidden");
+  hsForm.classList.add("hidden");
+  pauseMenu.classList.add("hidden");
+  restorePauseFocus();
   cancelAnimationFrame(animId);
   animId = requestAnimationFrame(loop);
 }
 
 document.addEventListener("keydown", (e) => {
+  if (!started || (e.target && e.target.tagName === "INPUT")) return;
   // con el foco en el selector de skin, las teclas son suyas (flechas navegan las opciones)
   if (e.target === skinSelect) return;
-  if (e.code === "KeyP") {
+  if (e.code === "KeyP" || e.code === "Escape") {
     togglePause();
+    return;
+  }
+  if (paused && e.code === "Tab") {
+    trapPauseFocus(e);
     return;
   }
   if (paused || gameOver) return;
@@ -518,6 +692,18 @@ document.addEventListener("keydown", (e) => {
 
 restartBtn.addEventListener("click", init);
 
+// Menú de pausa: el foco se gestiona dentro del diálogo (ver togglePause / trapPauseFocus).
+resumeBtn.addEventListener("click", () => {
+  if (paused) togglePause();
+});
+pauseRestartBtn.addEventListener("click", () => {
+  startLevel = Number(startLevelSelect.value);
+  init();
+});
+controlsBtn.addEventListener("click", () => {
+  controlsList.classList.toggle("hidden");
+});
+
 themeToggleBtn.addEventListener("click", () => {
   applyTheme(document.body.classList.contains("light-theme") ? "dark" : "light");
 });
@@ -526,7 +712,15 @@ skinSelect.addEventListener("change", () => {
   applySkin(skinSelect.value);
 });
 
-applyTheme(localStorage.getItem(THEME_STORAGE_KEY) === "light" ? "light" : "dark");
+let themeSaved = null;
+try {
+  themeSaved = localStorage.getItem(THEME_STORAGE_KEY);
+} catch (e) {}
+applyTheme(themeSaved === "light" ? "light" : "dark");
 currentSkin = SKINS[loadSkin()] || SKINS.retro;
 skinSelect.value = Object.keys(SKINS).find((k) => SKINS[k] === currentSkin);
 init();
+// La partida no arranca hasta pulsar "Jugar"
+cancelAnimationFrame(animId);
+animId = null;
+renderScores(startScoresEl, stats, null);
