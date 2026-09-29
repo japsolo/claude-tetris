@@ -321,6 +321,14 @@ function endGame() {
   overlay.classList.remove("hidden");
 }
 
+let pauseReturnFocus = null;
+
+function restorePauseFocus() {
+  const returnFocus = pauseReturnFocus;
+  pauseReturnFocus = null;
+  if (returnFocus instanceof HTMLElement) returnFocus.focus();
+}
+
 function togglePause() {
   if (gameOver) return;
   paused = !paused;
@@ -328,14 +336,32 @@ function togglePause() {
     lastTime = performance.now();
     dropAccum = 0;
     pauseMenu.classList.add("hidden");
+    restorePauseFocus();
     cancelAnimationFrame(animId);
     animId = requestAnimationFrame(loop);
   } else {
     cancelAnimationFrame(animId);
     animId = null;
+    pauseReturnFocus = document.activeElement;
     controlsList.classList.add("hidden");
     startLevelSelect.value = startLevel;
     pauseMenu.classList.remove("hidden");
+    resumeBtn.focus();
+  }
+}
+
+function trapPauseFocus(e) {
+  const focusable = [...pauseMenu.querySelectorAll("button:not([disabled]), select:not([disabled])")].filter(
+    (el) => el.offsetParent !== null
+  );
+  const first = focusable[0];
+  const last = focusable[focusable.length - 1];
+  const outside = !pauseMenu.contains(document.activeElement);
+  const wrapBack = e.shiftKey && document.activeElement === first;
+  const wrapForward = !e.shiftKey && document.activeElement === last;
+  if (outside || wrapBack || wrapForward) {
+    e.preventDefault();
+    (e.shiftKey ? last : first).focus();
   }
 }
 
@@ -373,6 +399,7 @@ function init() {
   updateHUD();
   overlay.classList.add("hidden");
   pauseMenu.classList.add("hidden");
+  restorePauseFocus();
   cancelAnimationFrame(animId);
   animId = requestAnimationFrame(loop);
 }
@@ -380,6 +407,10 @@ function init() {
 document.addEventListener("keydown", (e) => {
   if (e.code === "KeyP" || e.code === "Escape") {
     togglePause();
+    return;
+  }
+  if (paused && e.code === "Tab") {
+    trapPauseFocus(e);
     return;
   }
   if (paused || gameOver) return;
@@ -407,22 +438,16 @@ document.addEventListener("keydown", (e) => {
 
 restartBtn.addEventListener("click", init);
 
-// Menú de pausa: los botones pierden el foco tras el clic para que Space no los active.
+// Menú de pausa: el foco se gestiona dentro del diálogo (ver togglePause / trapPauseFocus).
 resumeBtn.addEventListener("click", () => {
-  resumeBtn.blur();
   if (paused) togglePause();
 });
 pauseRestartBtn.addEventListener("click", () => {
-  pauseRestartBtn.blur();
   startLevel = Number(startLevelSelect.value);
   init();
 });
 controlsBtn.addEventListener("click", () => {
-  controlsBtn.blur();
   controlsList.classList.toggle("hidden");
-});
-startLevelSelect.addEventListener("change", () => {
-  startLevelSelect.blur();
 });
 
 themeToggleBtn.addEventListener("click", () => {
