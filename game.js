@@ -487,11 +487,8 @@ function init() {
 }
 
 document.addEventListener("keydown", (e) => {
-  if (e.target === skinSelect) {
-    // el select no debe robar las teclas de juego: soltar el foco y evitar que cambie de valor
-    skinSelect.blur();
-    if (e.code.startsWith("Arrow") || e.code === "Space") e.preventDefault();
-  }
+  // con el foco en el selector de skin, las teclas son suyas (flechas navegan las opciones)
+  if (e.target === skinSelect) return;
   if (e.code === "KeyP") {
     togglePause();
     return;
@@ -527,7 +524,6 @@ themeToggleBtn.addEventListener("click", () => {
 
 skinSelect.addEventListener("change", () => {
   applySkin(skinSelect.value);
-  skinSelect.blur();
 });
 
 applyTheme(localStorage.getItem(THEME_STORAGE_KEY) === "light" ? "light" : "dark");
