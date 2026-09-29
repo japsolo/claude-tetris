@@ -48,7 +48,24 @@
           <div class="overlay-box">
             <p id="overlay-title">GAME OVER</p>
             <p id="overlay-score"></p>
+            <p id="hs-badge" class="hs-badge hidden">¡Nuevo récord!</p>
+            <div id="hs-form" class="hs-form hidden">
+              <input type="text" id="hs-name" maxlength="12" placeholder="Tu nombre" autocomplete="off" />
+              <button type="button" id="hs-save">Guardar</button>
+            </div>
+            <div id="over-scores" class="hs-scores"></div>
             <button type="button" id="restart-btn">Reiniciar</button>
+            <button type="button" class="clear-scores-btn">Borrar récords</button>
+          </div>
+        </div>
+
+        <div id="start-screen" class="overlay">
+          <div class="overlay-box">
+            <p id="start-title">TETRIS</p>
+            <p class="hs-heading">Mejores puntuaciones</p>
+            <div id="start-scores" class="hs-scores"></div>
+            <button type="button" id="play-btn">Jugar</button>
+            <button type="button" class="clear-scores-btn">Borrar récords</button>
           </div>
         </div>
       </div>

@@ -29,6 +29,7 @@ Everything lives in `game.js` (~300 lines), driven by a single `requestAnimation
 - **Scoring**: `LINE_SCORES = [0, 100, 300, 500, 800]` multiplied by `level`; hard drop adds 2 points/cell dropped, soft drop adds 1 point/row.
 - **Level/speed**: level increases every 10 lines; `dropInterval = max(100, 1000 - (level - 1) * 90)` ms.
 - **Ghost piece**: `ghostY()` projects the current piece straight down to its landing row; drawn at `globalAlpha = 0.2`.
+- **Récords**: `combo`/`maxCombo` se actualizan en `registerCombo()` (llamado al final de `clearLines`). Top 5 en localStorage `tetris-highscores` y mejor combo / máx. líneas en `tetris-highscores-stats` (todo con try/catch). `#start-screen` (botón Jugar; `started` bloquea las teclas hasta entonces) y el overlay de game over muestran la tabla vía `renderScores()`; `showGameOverScores()` muestra el formulario de nombre si `qualifies()`. El listener `keydown` ignora eventos de `<input>`.
 - **Game over**: triggered in `spawn()` if the newly spawned piece immediately collides.
 
 All state (`board`, `current`, `next`, `score`, `lines`, `level`, `paused`, `gameOver`, timing vars) is module-level, reset by `init()`.
