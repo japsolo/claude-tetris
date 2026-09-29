@@ -23,6 +23,8 @@ body {
   --restart-text: #0f0f17;
   --restart-hover: #9bbdff;
   --grid-line: #22222e;
+  --hs-highlight: rgba(122, 162, 247, 0.25);
+  --hs-badge: #f7c948;
 
   background: var(--bg);
   color: var(--text);
@@ -54,6 +56,8 @@ body.light-theme {
   --restart-text: #ffffff;
   --restart-hover: #5c6bc0;
   --grid-line: #d8d8e4;
+  --hs-highlight: rgba(63, 81, 181, 0.18);
+  --hs-badge: #b26a00;
 }
 
 .wrapper {
@@ -207,7 +211,9 @@ kbd {
   color: var(--accent);
 }
 
-#restart-btn {
+#restart-btn,
+#play-btn,
+#hs-save {
   margin-top: 8px;
   background: var(--restart-bg);
   color: var(--restart-text);
@@ -221,8 +227,104 @@ kbd {
   transition: background 0.15s;
 }
 
-#restart-btn:hover {
+#restart-btn:hover,
+#play-btn:hover,
+#hs-save:hover {
   background: var(--restart-hover);
+}
+
+/* ---- Récords ---- */
+#start-title {
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: 4px;
+  color: var(--accent);
+}
+
+.hs-heading {
+  font-size: 12px;
+  letter-spacing: 2px;
+  color: var(--label-color);
+}
+
+.hs-scores {
+  font-size: 12px;
+}
+
+.hs-table {
+  border-collapse: collapse;
+  font-family: 'Courier New', Courier, monospace;
+  color: var(--text);
+}
+
+.hs-table th,
+.hs-table td {
+  padding: 3px 8px;
+  text-align: left;
+}
+
+.hs-table th {
+  color: var(--label-color);
+  font-weight: 600;
+}
+
+.hs-table .hs-empty {
+  text-align: center;
+  color: var(--controls-color);
+}
+
+.hs-table tr.hs-current {
+  background: var(--hs-highlight);
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.hs-stats {
+  margin-top: 6px;
+  color: var(--controls-color);
+}
+
+.hs-badge {
+  font-weight: 800;
+  letter-spacing: 2px;
+  color: var(--hs-badge);
+}
+
+.hs-form {
+  display: flex;
+  gap: 6px;
+}
+
+.hs-form.hidden,
+.hs-badge.hidden {
+  display: none;
+}
+
+#hs-name {
+  width: 130px;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--panel-bg);
+  color: var(--text);
+}
+
+#hs-save {
+  margin-top: 0;
+  padding: 6px 14px;
+}
+
+.clear-scores-btn {
+  background: none;
+  border: none;
+  color: var(--controls-color);
+  font-size: 11px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.clear-scores-btn:hover {
+  color: var(--overlay-title-color);
 }
 
 /* ---- Menú de pausa ---- */
